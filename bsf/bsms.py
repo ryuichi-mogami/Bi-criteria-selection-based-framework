@@ -124,7 +124,7 @@ class FitnessAssignment(Survival):
         
         # the number of objectives
         _, n_obj = F.shape
-        pf_path = f'./ref_point_dataset/{problem.name()}_d{n_obj}_n{self.n[n_obj - 2]}.csv'
+        pf_path = f'/home/mogami/bicriteria_pbemo/ref_point_dataset/{problem.name()}_d{n_obj}_n{self.n[n_obj - 2]}.csv'
         pf_npy = pf_path.replace('.csv', '.npy')
         if not os.path.exists(pf_npy):
             PF = np.loadtxt(pf_path, delimiter=',')
