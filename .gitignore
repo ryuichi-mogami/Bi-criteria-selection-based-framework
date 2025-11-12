@@ -2,5 +2,6 @@ output
 __pycache__
 pymoo
 ref_point_data/*/*type2.csv 
+script
 ref_point_dataset
 weight_point_dataset
