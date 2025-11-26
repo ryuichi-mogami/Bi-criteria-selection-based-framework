@@ -13,15 +13,15 @@ import pandas as pd
 # ユーザー設定
 # =========================
 # ここだけ指定すればOK（描画したい解集合CSV）
-roi = "roi-p"
-SOL_FILE  = f"../output/results/{roi}/BNSGA2/DTLZ2/m2/pop_0th_run_50000fevals.csv"
+mult_ref = 2
+roi = "roi-c"
 # 問題設定（PFとzの読み込みに使用）
+alg = "RNSGA2"
 m          = 2
 prob       = "DTLZ2"
-t          = 1
 r          = 0.1
-
-out_dir    = '../output/2d_image_single'
+SOL_FILE  = f"../output/results_{mult_ref}/{roi}/{alg}/{prob}/m{m}/pop_0th_run_3100fevals.csv"
+out_dir    = f'../output/2d_image_single_{mult_ref}'
 dpi_save   = 600
 
 mpl.rcParams['font.family'] = 'serif'
@@ -45,7 +45,7 @@ def normalize_points(X, ideal, nadir):
     return (X - ideal) / denom
 
 # ---------- 入出力 ----------
-def load_pf(prob, m, t):
+def load_pf(prob, m):
     pf_path = f'../ref_point_dataset/{prob}_d{m}_n50000.csv'
     return np.loadtxt(pf_path, delimiter=',')
 
@@ -65,8 +65,10 @@ def plot_2d(PF, Pset, z):
     P_norm   = normalize_points(Pset, I, N)
     ref_norm = normalize_points(z,    I, N)
 
+    nearest_point = []
     # PF上でzに最も近い点（実スケールで探索 → 正規化座標で描画）
-    nearest_point = PF_norm[np.argmin(np.linalg.norm(PF - z, axis=1))]
+    for i in range(len(z)):
+        nearest_point.append(PF_norm[np.argmin(np.linalg.norm(PF - z[i], axis=1))])
 
     # ----- Figure / Axes -----
     fig, ax = plt.subplots(figsize=(6.8, 6.8))
@@ -75,29 +77,32 @@ def plot_2d(PF, Pset, z):
     ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
                color='black', s=3, alpha=0.2, rasterized=True)
     # ref point
-    ax.scatter(ref_norm[0], ref_norm[1],
-               color=(44/255, 160/255, 44/255),
-               marker='^', s=230)
+    for i in range(len(z)):
+        ax.scatter(ref_norm[i][0], ref_norm[i][1],
+                color=(44/255, 160/255, 44/255),
+                marker='^', s=230)
     # solution set
     ax.scatter(P_norm[:, 0], P_norm[:, 1],
                color=(31/255, 119/255, 180/255), s=100, rasterized=True)
 
     # nearest point
-    ax.scatter(nearest_point[0], nearest_point[1],
-               color=(255/255, 127/255, 14/255),
-               marker='s', s=100)
+    for i in range(len(z)):
+        ax.scatter(nearest_point[i][0], nearest_point[i][1],
+                color=(255/255, 127/255, 14/255),
+                marker='s', s=100)
 
     # ROI（正規化半径 r → 元スケールでは楕円, 正規化空間では円）
     # ※「切り出し」は行わない＝可視化のみ
-    rx = r / (N[0] - I[0]) * (N[0] - I[0])  # = r
-    ry = r / (N[1] - I[1]) * (N[1] - I[1])  # = r
-    roi_ellipse = Ellipse(
-        xy=(nearest_point[0], nearest_point[1]),
-        width=2*rx, height=2*ry,
-        fill=False, edgecolor='black',
-        linestyle=(0, (1.9, 1)), linewidth=1.5
-    )
-    ax.add_patch(roi_ellipse)
+    for i in range(len(z)):
+        rx = r / (N[0] - I[0]) * (N[0] - I[0])  # = r
+        ry = r / (N[1] - I[1]) * (N[1] - I[1])  # = r
+        roi_ellipse = Ellipse(
+            xy=(nearest_point[i][0], nearest_point[i][1]),
+            width=2*rx, height=2*ry,
+            fill=False, edgecolor='black',
+            linestyle=(0, (1.9, 1)), linewidth=1.5
+        )
+        ax.add_patch(roi_ellipse)
 
     # 軸ラベルなど
     ax.set_xlabel(r'$f_1$', fontsize=50)
@@ -139,9 +144,12 @@ def main():
         raise FileNotFoundError(f"sol_file が見つかりません: {SOL_FILE}")
 
     # PF & z は従来パスから読む
-    PF = load_pf(prob, m, t)
-    z  = load_ref_point(prob, m, t)
+    PF = load_pf(prob, m)
+    z = []
+    for t in range(1, mult_ref + 1):
+        z.append(load_ref_point(prob, m, t))
 
+    print(z)
     # 解集合（任意のファイルをそのまま）
     Pset = np.loadtxt(SOL_FILE, delimiter=',', ndmin=2)
     if Pset.shape[1] < 2:

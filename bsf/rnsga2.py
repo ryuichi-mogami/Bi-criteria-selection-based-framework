@@ -22,6 +22,7 @@ class RNSGA2(NSGA2):
                  normalization="front",
                  weights=None,
                  extreme_points_as_reference_points=False,
+                 mult_ref=1,
                  **kwargs):
         """
 
@@ -36,6 +37,7 @@ class RNSGA2(NSGA2):
 
         """
         # self.ref_points = ref_points
+        self.mult_ref = mult_ref
         self.epsilon = epsilon
         self.weights = weights
         self.normalization = normalization
@@ -44,7 +46,7 @@ class RNSGA2(NSGA2):
         super().__init__(**kwargs)
 
         self.survival = RankAndModifiedCrowdingSurvival(ref_points, epsilon, weights, normalization,
-                                                        extreme_points_as_reference_points)
+                                                        extreme_points_as_reference_points, mult_ref)
 
 
 class RankAndModifiedCrowdingSurvival(Survival):
@@ -53,12 +55,14 @@ class RankAndModifiedCrowdingSurvival(Survival):
                  epsilon,
                  weights,
                  normalization,
-                 extreme_points_as_reference_points
+                 extreme_points_as_reference_points, 
+                 mult_ref
                  ) -> None:
 
         super().__init__(True)
         self.n_obj = None
         self.ref_points = None
+        self.mult_ref = mult_ref
         self._ref_point_cache = {}
         self.epsilon = epsilon
         self.extreme_points_as_reference_points = extreme_points_as_reference_points
@@ -73,11 +77,14 @@ class RankAndModifiedCrowdingSurvival(Survival):
         self.ideal_point = None
         self.nadir_point = None
 
-    def _load_ref_point(self, n_obj: int, problem_name: str) -> np.ndarray:
-        key = (n_obj, problem_name) 
+    def _load_ref_point(self, n_obj: int, problem_name: str, i: int) -> np.ndarray:
+        key = (n_obj, problem_name, i) 
         if key in self._ref_point_cache:
             return self._ref_point_cache[key]
-        ref_file = f"/home/mogami/bicriteria_pbemo/ref_point_data/roi-c/m{n_obj}_{problem_name}_type1.csv" 
+        if self.mult_ref == 1:
+            ref_file = f"/home/mogami/bicriteria_pbemo/ref_point_data/roi-c/m{n_obj}_{problem_name}_type{i}.csv" 
+        else:
+            ref_file = f"/home/mogami/bicriteria_pbemo/ref_point_data/roi-c/m{n_obj}_{problem_name}_type{i}.csv"
         ref_point = np.loadtxt(ref_file, delimiter=",", dtype=float) 
         self._ref_point_cache[key] = ref_point 
         return ref_point
@@ -97,7 +104,19 @@ class RankAndModifiedCrowdingSurvival(Survival):
         # do the non-dominated sorting until splitting front
         fronts = NonDominatedSorting().do(F)
         if self.ref_points is None:
-            self.ref_points = self._load_ref_point(self.n_obj, problem.name())
+            if self.mult_ref is None or self.mult_ref == 1:
+                # 1種類だけ使う場合（type1固定など）
+                self.ref_points = self._load_ref_point(self.n_obj, problem.name(), 1)
+            else:
+                ref_list = []
+                # type1, type2, ..., type{mult_ref} を読み込む想定
+                for i in range(1, self.mult_ref + 1):
+                    ref_i = self._load_ref_point(self.n_obj, problem.name(), i)
+                    # もし各CSVが (K_i, m) ならそのまま追加
+                    # 仮に (m,) なら ref_i[np.newaxis, :] にする
+                    ref_list.append(ref_i)
+                self.ref_points = np.vstack(ref_list)
+        # print(f"Using reference points:\n{self.ref_points}")
         if self.normalization == "ever":
             # find or usually update the new ideal point - from feasible solutions
             self.ideal_point = np.min(np.vstack((self.ideal_point, F)), axis=0)
@@ -119,7 +138,11 @@ class RankAndModifiedCrowdingSurvival(Survival):
         # calculate the distance matrix from ever solution to all reference point
         dist_to_ref_points = calc_norm_pref_distance(F, self.ref_points, self.weights, self.ideal_point,
                                                      self.nadir_point)
+        # # どの参照点が各個体にとって一番近いか
+        # best_ref_idx = np.argmin(dist_to_ref_points, axis=1)  # shape: (len(F),)
 
+        # unique, counts = np.unique(best_ref_idx, return_counts=True)
+        # print("ref index -> count:", dict(zip(unique, counts)))
         for k, front in enumerate(fronts):
 
             # save rank attributes to the individuals - rank = front here

@@ -13,7 +13,7 @@ n_obj        = [2,4,6]
 problems     = ['DTLZ1','DTLZ2','DTLZ3','DTLZ4','DTLZ5','DTLZ6','DTLZ7']#'DTLZ1','DTLZ2','DTLZ3','DTLZ4','DTLZ5','DTLZ6','DTLZ7' , 'SDTLZ1', 'SDTLZ2', 'SDTLZ3', 'SDTLZ4'
 ALGO_SETS = {
     'IGD-C': ['BNSGA2', 'BIBEA', 'BSMSEMOA', 'RNSGA2'],
-    'IGD-P': ['BNSGA2', 'BIBEA', 'BSMSEMOA', 'gNSGA2'],
+    'IGD-P': ['BNSGA2','gNSGA2'],
 }
 ROI2METRIC = {
     'roi-c': 'IGD-C',

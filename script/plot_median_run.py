@@ -18,20 +18,21 @@ import pandas as pd
 # =========================
 n_obj_list   = [2]
 problems     = [
-    "DTLZ1","DTLZ2", "DTLZ3", "DTLZ4", "DTLZ5", "DTLZ6", "DTLZ7"
+    "DTLZ2"
 ]
-roi_types   = ["roi-p"]
-algorithms   = ['BIBEA']#'BNSGA2', 'BIBEA', 'BSMSEMOA','RNSGA2-no'
+mult_ref  = 2
+roi_types   = ["roi-c"]
+algorithms   = ['RNSGA2','BNSGA2']#'BNSGA2', 'BIBEA', 'BSMSEMOA','RNSGA2-no'
 pop_sel_caption = {
     'POP': 'TRUE'    # 正規化は真の端点
 }
 pop_selection = list(pop_sel_caption.keys())
 
-n_runs     = 1
+n_runs     = 31
 t          = 1
 r_radius   = 0.1
 mu         = 100
-out_dir    = '../output/2d_image_median'
+out_dir    = f'../output/2d_image_median_{mult_ref}'
 dpi_save   = 600
 r = 0.1
 
@@ -99,7 +100,7 @@ def compute_igd_c_plus(X, PF, PF_norm, z, r, ideal, nadir, prob, m):
     for i, p in enumerate(PF):
         distance_list[i] = np.linalg.norm(p - z)
     
-    pivot_dir = "../output/pivot"
+    pivot_dir = f"../output/pivot_{mult_ref}"
     os.makedirs(pivot_dir, exist_ok=True)
     pivot_file = os.path.join(pivot_dir, f"{prob}_{m}.csv")
 
@@ -182,13 +183,21 @@ def compute_igd_p_plus(X, PF, PF_norm, z, r, ideal, nadir):
 
 # ---------- 入出力（UUA 用に修正） ----------
 def sol_path(pop_sel, roi_type, alg, prob, m, run):
-    base = f'../output/results/{roi_type}/{alg}/{prob}/m{m}/'
-    base_igdC =f'../output/igdC_plus/{roi_type}/{alg}/{prob}/m{m}/'
+    if alg == "NSGA2":
+        base = f'../output/results/emo/{alg}/{prob}/m{m}/'
+        base_igdC =f'../output/igdC_plus/emo-{roi_type}/{alg}/{prob}/m{m}/'
+    else:
+        base = f'../output/results_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
+        base_igdC =f'../output/igdC_plus_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
     os.makedirs(base, exist_ok=True)
     os.makedirs(base_igdC, exist_ok=True)
 
-    csv_path = f'{base}pop_{run}th_run_50000fevals.csv'
-    igd_path = f'{base_igdC}pop_{run}th_run_50000fevals.csv'
+    if alg == "BNSGA2" and mult_ref == 2:
+        csv_path = f'{base}pop_{run}th_run_25000fevals.csv'
+        igd_path = f'{base_igdC}pop_{run}th_run_25000fevals.csv'
+    else:
+        csv_path = f'{base}pop_{run}th_run_50000fevals.csv'
+        igd_path = f'{base_igdC}pop_{run}th_run_50000fevals.csv'
     return csv_path, igd_path
 
 def load_pf(prob, m, t):
@@ -196,7 +205,10 @@ def load_pf(prob, m, t):
     return np.loadtxt(pf_path, delimiter=',')
 
 def load_ref_point(prob, m, t):
-    return np.loadtxt(f'../ref_point_data/roi-c/m{m}_{prob}_type{t}.csv', delimiter=',', ndmin=1)
+    if mult_ref == 1:
+        return np.loadtxt(f'../ref_point_data/roi-c/m{m}_{prob}_type{t}.csv', delimiter=',', ndmin=1)
+    else:   
+        return np.loadtxt(f'../ref_point_data/roi-c/m{m}_{prob}_type{t}.csv', delimiter=',', ndmin=1)
 
 def select_median_run(vals):
     valid = [(i,v) for i,v in enumerate(vals) if not np.isnan(v)]
@@ -207,110 +219,6 @@ def select_median_run(vals):
     target = sorted_vals[n//2][1] if n % 2 else 0.5*(sorted_vals[n//2-1][1]+sorted_vals[n//2][1])
     best = min(sorted_vals, key=lambda x: (abs(x[1]-target), x[0]))
     return best[0]
-
-def draw_frame(ax, pset_df: pd.DataFrame, fevals: int, PF, z):
-    Pset = pset_df.iloc[:, :2].to_numpy(dtype=float)
-    # ----- 基本量の計算 -----
-    true_ideal_x, true_nadir_x = PF[:, 0].min(), PF[:, 0].max() 
-    true_ideal_y, true_nadir_y = PF[:, 1].min(), PF[:, 1].max() 
-    true_ideal = PF.min(axis=0) # [ideal_x, ideal_y] 
-    true_nadir = PF.max(axis=0) # [nadir_x, nadir_y]
-    I, N = (true_ideal, true_nadir)
-    PF_norm  = normalize_points(PF,  I, N)
-    P_norm   = normalize_points(Pset, I, N)
-    ref_norm = normalize_points(z,    I, N)
-
-    # 背景クリア（軸は維持）
-    ax.cla()
-    #グラフの範囲指定
-    ax.set_xlim([0, 1 + 0.3]) 
-    ax.set_ylim([0, 1 + 0.3])
-    nearest_point = PF_norm[np.argmin(np.linalg.norm(PF - z, axis=1))]
-
-    # PF
-    ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
-                color='black', s=3, alpha=0.2, rasterized=True)
-    # ref point
-    ax.scatter(ref_norm[0], ref_norm[1],
-                color=(44/255, 160/255, 44/255),
-                marker='^', s=230)
-    # solution set
-    ax.scatter(P_norm[:, 0], P_norm[:, 1],
-                color=(31/255, 119/255, 180/255), s=100, rasterized=True)
-
-    # nearest point
-    ax.scatter(nearest_point[0], nearest_point[1],
-                color=(255/255, 127/255, 14/255),
-                marker='s', s=100)
-    # ROI（正規化半径 r → 元スケールでは楕円）
-    rx = r / (N[0] - I[0])   # x半径
-    ry = r / (N[1] - I[1])  # y半径
-    roi_ellipse = Ellipse(
-        xy=(nearest_point[0], nearest_point[1]),
-        width=2*rx, height=2*ry,
-        fill=False, edgecolor='black',
-        linestyle=(0, (1.9, 1)), linewidth=1.5
-    )
-    ax.add_patch(roi_ellipse)
-
-    #軸ラベル設定
-    ax.set_xlabel(r'$f_1$', fontsize=50)
-    ax.set_ylabel(r'$f_2$', fontsize=50)
-
-    #目盛りの数値の大きさ
-    ax.tick_params(axis='both', which='major', labelsize=45)
-    ax.tick_params(axis='both', which='minor', labelsize=45)
-    ax.set_aspect('equal', adjustable='box')
-    # 目盛り表示
-    ax.set_xticks([0, 1])
-    ax.set_yticks([0, 1])
-
-    # ラベルは実スケールの ideal / nadir
-    ax.xaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_x, true_nadir_x)))
-    ax.yaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_y, true_nadir_y)))
-    ax.set_aspect('equal', adjustable='box')
-
-    plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
-
-    # テロップ（左上）
-    # ax.set_title(f"fevals = {fevals}", loc="left", fontsize=28, pad=10)
-    ax.text(0.98, 0.98, f"{fevals}fevals", transform=ax.transAxes,
-        fontsize=15, va='top', ha='right', color ='black')
-    for spine in ax.spines.values():
-        spine.set_linewidth(2.5)
-
-    #目盛り線を消す
-    ax.tick_params(axis='both', which='both', length=0)
-
-def generate_movie(prob, m, roi_type, alg, pop_sel, run, PF, z):
-    file_list = []
-    out_mp4    = f"../output/2d_movie_median/{roi_type}/{alg}/{prob}/m{m}/"
-    os.makedirs(out_mp4, exist_ok=True)
-    out_mp4   += f'pop_median_run.mp4'
-    for fe in fevals_list:
-        fname = fname_fmt.format(nth=run, fevals=fe)
-        path  = os.path.join(f"../output/results/{roi_type}/{alg}/{prob}/m{2}/", fname)
-        if os.path.exists(path):
-            file_list.append((fe, path))
-        else:
-            print(f'[warn] missing {path}')
-            pass
-    
-    fig, ax = plt.subplots(figsize=(6.8, 6.8))
-
-    #ffmpeg呼び出し
-    writer = FFMpegWriter(fps=fps, bitrate=bitrate, metadata={'artist': 'EC Video'})
-    with writer.saving(fig, out_mp4, dpi=150):
-        for fe, path in tqdm(file_list, desc="Rendering"):
-            try:
-                df = pd.read_csv(path, header=None)
-            except Exception:
-                continue
-            draw_frame(ax, df, fe, PF, z)
-            writer.grab_frame()
-    plt.close(fig)
-    print(f"✅ 出力: {out_mp4}")
-
 
 # ---------- 描画 ----------
 def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
@@ -323,10 +231,10 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
     PF_norm  = normalize_points(PF,  I, N)
     P_norm   = normalize_points(Pset, I, N)
     ref_norm = normalize_points(z,    I, N)
-
-    nearest_point = PF_norm[np.argmin(np.linalg.norm(PF - z, axis=1))]
+    nearest_point = []
     if roi_type == 'roi-c':
-        nearest_point = PF_norm[np.argmin(np.linalg.norm(PF - z, axis=1))]
+        for i in range(len(z)):
+            nearest_point.append(PF_norm[np.argmin(np.linalg.norm(PF - z[i], axis=1))])
     elif roi_type == 'roi-a':
         asf_value = np.zeros(len(PF))
         for i, point in enumerate(PF):
@@ -340,29 +248,33 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
     # PF
     ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
                 color='black', s=3, alpha=0.2, rasterized=True)
-    # ref point
-    ax.scatter(ref_norm[0], ref_norm[1],
-                color=(44/255, 160/255, 44/255),
-                marker='^', s=230)
+    if roi_type != "emo": 
+        # ref point
+        for i in range(len(z)):
+            ax.scatter(ref_norm[i][0], ref_norm[i][1],
+                    color=(44/255, 160/255, 44/255),
+                    marker='^', s=230)
     # solution set
     ax.scatter(P_norm[:, 0], P_norm[:, 1],
                 color=(31/255, 119/255, 180/255), s=100, rasterized=True)
 
     # nearest point
     if roi_type == 'roi-c' or roi_type == 'roi-a':
-        ax.scatter(nearest_point[0], nearest_point[1],
+        for i in range(len(z)):
+            ax.scatter(nearest_point[i][0], nearest_point[i][1],
                     color=(255/255, 127/255, 14/255),
                     marker='s', s=100)
         # ROI（正規化半径 r → 元スケールでは楕円）
-        rx = r / (N[0] - I[0]) *true_nadir[0]  # x半径
-        ry = r / (N[1] - I[1]) *true_nadir[1]  # y半径
-        roi_ellipse = Ellipse(
-            xy=(nearest_point[0], nearest_point[1]),
-            width=2*rx, height=2*ry,
-            fill=False, edgecolor='black',
-            linestyle=(0, (1.9, 1)), linewidth=1.5
-        )
-        ax.add_patch(roi_ellipse)
+        for i in range(len(z)):
+            rx = r / (N[0] - I[0]) * (N[0] - I[0])  # = r
+            ry = r / (N[1] - I[1]) * (N[1] - I[1])  # = r
+            roi_ellipse = Ellipse(
+                xy=(nearest_point[i][0], nearest_point[i][1]),
+                width=2*rx, height=2*ry,
+                fill=False, edgecolor='black',
+                linestyle=(0, (1.9, 1)), linewidth=1.5
+            )
+            ax.add_patch(roi_ellipse)
     # elif roi_type == 'roi-p':
         # ROI-P: 補助線（z の垂直・水平）
         # ax.axvline(ref_norm[0], linestyle=(0, (1.9, 1)), linewidth=1.5, color='black')
@@ -415,102 +327,11 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
 
     plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
 
-    output_dir = f'../output/2d_image_median/{roi_type}/{alg}/{prob}/m{m}/'
+    output_dir = f'../output/2d_image_median_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
     os.makedirs(output_dir, exist_ok=True)
     #画像ファイル名指定
     image_file = os.path.join(output_dir, f'final_pop_median_run.pdf')
     image_file2 = os.path.join(output_dir, f'final_pop_median_run.png')
-    for spine in ax.spines.values():
-        spine.set_linewidth(2.5)
-
-    #目盛り線を消す
-    ax.tick_params(axis='both', which='both', length=0)
-
-    # # 目盛り位置そのものを消す（念のため）
-    # ax.set_xticks([])
-    # ax.set_yticks([])
-
-    # # 軸ラベルも不要なら
-    # ax.set_xlabel('')
-    # ax.set_ylabel('')
-    #画像保存
-    plt.savefig(image_file, dpi=600)
-    plt.savefig(image_file2, dpi=600)
-    plt.close(fig)
-    print(f"2Dプロット画像を作成しました: {image_file}")
-    print(f"2Dプロット画像を作成しました: {image_file2}")
-
-def plot_2d_all(prob, m, alg, pop_sel, run, PF, Pset, z):
-    # ----- 基本量の計算 -----
-    true_ideal_x, true_nadir_x = PF[:, 0].min(), PF[:, 0].max() 
-    true_ideal_y, true_nadir_y = PF[:, 1].min(), PF[:, 1].max() 
-    true_ideal = PF.min(axis=0) # [ideal_x, ideal_y] 
-    true_nadir = PF.max(axis=0) # [nadir_x, nadir_y]
-    I, N = (true_ideal, true_nadir)
-    PF_norm  = normalize_points(PF,  I, N)
-    P_norm   = normalize_points(Pset, I, N)
-    ref_norm = normalize_points(z,    I, N)
-
-    nearest_point = PF_norm[np.argmin(np.linalg.norm(PF - z, axis=1))]
-
-    # ----- Figure / Axes -----
-    fig, ax = plt.subplots(figsize=(6.8, 6.8))
-
-    # PF
-    ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
-                color='black', s=3, alpha=0.2, rasterized=True)
-    # ref point
-    ax.scatter(ref_norm[0], ref_norm[1],
-                color=(44/255, 160/255, 44/255),
-                marker='^', s=230)
-    # solution set
-    ax.scatter(P_norm[:, 0], P_norm[:, 1],
-                color=(31/255, 119/255, 180/255), s=100, rasterized=True)
-
-    # nearest point
-    ax.scatter(nearest_point[0], nearest_point[1],
-                color=(255/255, 127/255, 14/255),
-                marker='s', s=100)
-    # ROI（正規化半径 r → 元スケールでは楕円）
-    rx = r / (N[0] - I[0])   # x半径
-    ry = r / (N[1] - I[1])   # y半径
-    roi_ellipse = Ellipse(
-        xy=(nearest_point[0], nearest_point[1]),
-        width=2*rx, height=2*ry,
-        fill=False, edgecolor='black',
-        linestyle=(0, (1.9, 1)), linewidth=1.5
-    )
-    ax.add_patch(roi_ellipse)
-
-
-    #軸ラベル設定
-    ax.set_xlabel(r'$f_1$', fontsize=50)
-    ax.set_ylabel(r'$f_2$', fontsize=50)
-    #グラフの範囲指定
-    # 範囲（元スケール）
-    ax.set_xlim([0, 1 + 0.3]) 
-    ax.set_ylim([0, 1 + 0.3])
-
-    #目盛りの数値の大きさ
-    ax.tick_params(axis='both', which='major', labelsize=45)
-    ax.tick_params(axis='both', which='minor', labelsize=45)
-    ax.set_aspect('equal', adjustable='box')
-    # 目盛り表示
-    ax.set_xticks([0, 1])
-    ax.set_yticks([0, 1])
-
-    # ラベルは実スケールの ideal / nadir
-    ax.xaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_x, true_nadir_x)))
-    ax.yaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_y, true_nadir_y)))
-    ax.set_aspect('equal', adjustable='box')
-
-    plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
-
-    output_dir = f'./output/2d_image/{alg}/{prob}/m{m}/'
-    os.makedirs(output_dir, exist_ok=True)
-    #画像ファイル名指定
-    image_file = os.path.join(output_dir, f'final_pop_{run}th_run.pdf')
-    image_file2 = os.path.join(output_dir, f'final_pop_{run}th_run.png')
     for spine in ax.spines.values():
         spine.set_linewidth(2.5)
 
@@ -546,7 +367,9 @@ def main():
                 np.save(pf_npy, PF)
             else:
                 PF = np.load(pf_npy)
-            z  = load_ref_point(prob, m, t)
+            z = []
+            for t in range(1, mult_ref + 1):
+                 z.append(load_ref_point(prob, m, t))
             ideal, nadir = PF.min(axis=0), PF.max(axis=0)
             PF_norm = normalize_points(PF, ideal, nadir)
             for roi_type in roi_types:
@@ -558,7 +381,10 @@ def main():
                     if alg == "RNSGA2" and roi_type =="roi-p":
                         continue
                     if alg == "gNSGA2" and roi_type =="roi-c":
-                        continue
+                        continue 
+                    if roi_type == "emo":
+                        if alg in ["BNSGA2", "BIBEA", "BSMSEMOA", "RNSGA2", "gNSGA2"]:
+                            continue
                     # 1) まず基準POPで中央値runを決める
                     ref_vals = []
                     for run in range(n_runs):
@@ -570,16 +396,16 @@ def main():
                         else:
                             X = np.loadtxt(ref_csv, delimiter=',', ndmin=2)
                             if roi_type == 'roi-c':
-                                igd = compute_igd_c_plus(X, PF, PF_norm, z, r_radius_elipse, ideal, nadir, prob, m)
+                                igd = compute_igd_c_plus(X, PF, PF_norm, z[0], r_radius_elipse, ideal, nadir, prob, m)
                                 np.savetxt(ref_igd, [igd])
                             elif roi_type == 'roi-a':
-                                igd = compute_igd_a_plus(X, PF, PF_norm, z, r_radius_elipse, ideal, nadir, m)
+                                igd = compute_igd_a_plus(X, PF, PF_norm, z[0], r_radius_elipse, ideal, nadir, m)
                                 np.savetxt(ref_igd, [igd])
                             elif roi_type == 'roi-p':
-                                igd = compute_igd_p_plus(X, PF, PF_norm, z, r_radius_elipse, ideal, nadir)
+                                igd = compute_igd_p_plus(X, PF, PF_norm, z[0], r_radius_elipse, ideal, nadir)
                                 np.savetxt(ref_igd, [igd])
                             elif roi_type == 'emo':
-                                igd = compute_igd_c_plus(X, PF, PF_norm, z, r_radius_elipse, ideal, nadir, prob, m)
+                                igd = compute_igd_c_plus(X, PF, PF_norm, z[0], r_radius_elipse, ideal, nadir, prob, m)
                                 np.savetxt(ref_igd, [igd])
                         ref_vals.append((run, igd))
 

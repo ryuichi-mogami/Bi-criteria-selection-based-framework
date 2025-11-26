@@ -80,9 +80,11 @@ def binary_tournament(pop, P, algorithm, **kwargs):
 
 class FitnessAssignment(Survival):
 
-    def __init__(self, roi_type) -> None:
+    def __init__(self, roi_type, roi_id, alpha) -> None:
         super().__init__(filter_infeasible=True)
         self.roi_type = roi_type
+        self.roi_id = roi_id
+        self.alpha = alpha
         self._ref_point_cache = {}
         self.count = 0
         self.count_each = []
@@ -93,7 +95,8 @@ class FitnessAssignment(Survival):
         key = (n_obj, problem_name) 
         if key in self._ref_point_cache:
             return self._ref_point_cache[key]
-        ref_file = f"/home/mogami/bicriteria_pbemo/ref_point_data/{self.roi_type}/m{n_obj}_{problem_name}_type1.csv" 
+        ref_file = f"/home/mogami/bicriteria_pbemo/ref_point_data/{self.roi_type}/m{n_obj}_{problem_name}_type{self.roi_id}.csv"
+        print(f"Loading reference point from: {ref_file}")
         ref_point = np.loadtxt(ref_file, delimiter=",", dtype=float) 
         self._ref_point_cache[key] = ref_point 
         return ref_point
@@ -251,7 +254,7 @@ class FitnessAssignment(Survival):
             trimmed_pop = pop[sel_mask]     
             self.count += 1 
             self.count_each.append(self.count)                                   
-            return RankAndCrowdingSurvival().do(problem=problem, pop=trimmed_pop, n_survive=n_survive)
+            return RankAndCrowdingSurvival(alpha=self.alpha).do(problem=problem, pop=trimmed_pop, n_survive=n_survive)
         
 # =========================================================================================================
 # Implementation
@@ -276,9 +279,11 @@ class BNSGA2(GeneticAlgorithm):
                  survival=None,               
                  output=MultiObjectiveOutput(),
                  roi_type="roi-c",
+                 roi_id=1,
+                 alpha = 0,
                  **kwargs):
         if survival is None:
-            survival = FitnessAssignment(roi_type=roi_type)
+            survival = FitnessAssignment(roi_type=roi_type, roi_id=roi_id, alpha=alpha)
         super().__init__(
             pop_size=pop_size,
             sampling=sampling,

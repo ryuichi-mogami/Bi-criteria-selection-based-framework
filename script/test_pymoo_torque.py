@@ -44,7 +44,7 @@ import argparse
 # @click.option('--problem_name', '-p', required=True, type=str, help='Problem.')
 # @click.option('--alg', '-a', required=True, type=str, help='Name of EMOA.')
 # @click.option('--run_id', '-r', required=False, default=0, type=int, help='Run ID.')
-def run(n_obj, problem_name, alg, run_id, roi_type):  
+def run(n_obj, problem_name, alg, run_id, roi_type, mult_ref):  
     emo_max_fess = 50000
     termination = get_termination("n_eval", emo_max_fess)    
 
@@ -61,17 +61,31 @@ def run(n_obj, problem_name, alg, run_id, roi_type):
         problem = get_problem(problem_name, n_obj=n_obj)
 
     if alg == "BNSGA2":
-        algorithm = BNSGA2(pop_size=100, roi_type = roi_type)
+        if mult_ref == 1:
+            algorithm = BNSGA2(pop_size=100, roi_type = roi_type, roi_id = 1, alpha= 0)
+        elif mult_ref == 2:
+            algorithm = BNSGA2(pop_size=50, roi_type = roi_type, roi_id=1, alpha= 0)
+            algorithm2 = BNSGA2(pop_size=50, roi_type = roi_type, roi_id=2, alpha= 0)
+            emo_max_fess = 25000
+            termination = get_termination("n_eval", emo_max_fess)    
+    elif alg == "BNSGA2-drs":
+        if mult_ref == 1:
+            algorithm = BNSGA2(pop_size=100, roi_type = roi_type, roi_id = 1,  alpha=0.1)
+        elif mult_ref == 2:
+            algorithm = BNSGA2(pop_size=50, roi_type = roi_type, roi_id=1, alpha=0.1)
+            algorithm2 = BNSGA2(pop_size=50, roi_type = roi_type, roi_id=2, alpha=0.1)
+            emo_max_fess = 25000
+            termination = get_termination("n_eval", emo_max_fess)
     elif alg == "BIBEA":
         algorithm = BIBEA(pop_size=100, roi_type = roi_type)
     elif alg == "BSMSEMOA":
         algorithm = BSMSEMOA(pop_size=100, n_offspring=1, roi_type = roi_type)
     elif alg == "RNSGA2":
-        algorithm = RNSGA2(pop_size=100)
+        algorithm = RNSGA2(pop_size=100, mult_ref=mult_ref)
     elif alg == "gNSGA2":
         #change capital problem_name to match file name dtlz2 -> DTLZ2
         problem_name = problem_name.upper()
-        algorithm = gNSGA2(n_obj=n_obj, problem_name=problem_name, pop_size=100)
+        algorithm = gNSGA2(n_obj=n_obj, problem_name=problem_name, pop_size=100, mult_ref=mult_ref)
     elif alg == "NSGA2":
         algorithm = NSGA2(pop_size=100)
     elif alg == "SMSEMOA":
@@ -90,22 +104,53 @@ def run(n_obj, problem_name, alg, run_id, roi_type):
     #algorithm = MOEAD(moead_ref_dirs, n_neighbors=15, prob_neighbor_mating=0.9, decomposition=PBI())
     # algorithm = NSGA3(moead_ref_dirs)
 
-    res = minimize(problem, algorithm, termination, seed=run_id, verbose=False, save_history=True)
-    # print("count_each:", res.algorithm.survival.count_each, len(res.algorithm.survival.count_each))
-    for idx, fevals in enumerate(range(100, 50001, 100)):
-        F_gen = res.history[idx].pop.get("F") 
-        res_dir_path = os.path.join('../output/results', f'{roi_type}/{alg}/{problem_name.upper()}/m{n_obj}')
-        os.makedirs(res_dir_path, exist_ok=True)
-        res_file_path = os.path.join(res_dir_path, f'pop_{run_id}th_run_{fevals}fevals.csv')
-        # print(res_file_path)
-        np.savetxt(res_file_path, F_gen, delimiter=',') 
-    
-    if alg != "RNSGA2" and alg != "gNSGA2" and roi_type != "emo":
-        res_dir_path = os.path.join('../output/function_call_results', f'{roi_type}/{alg}/{problem_name.upper()}/m{n_obj}')
-        os.makedirs(res_dir_path, exist_ok=True)
-        count_each = np.array(res.algorithm.survival.count_each)
-        res_file_path = os.path.join(res_dir_path, f'function_call_{run_id}th_run.csv')
-        np.savetxt(res_file_path, count_each, fmt="%d")  
+    if mult_ref == 1 or alg == "RNSGA2":
+        res = minimize(problem, algorithm, termination, seed=run_id, verbose=False, save_history=True)
+        # print("count_each:", res.algorithm.survival.count_each, len(res.algorithm.survival.count_each))
+        for idx, fevals in enumerate(range(100, 50001, 100)):
+            F_gen = res.history[idx].pop.get("F") 
+            res_dir_path = os.path.join(f'../output/results_{mult_ref}', f'{roi_type}/{alg}/{problem_name.upper()}/m{n_obj}')
+            os.makedirs(res_dir_path, exist_ok=True)
+            res_file_path = os.path.join(res_dir_path, f'pop_{run_id}th_run_{fevals}fevals.csv')
+            # print(res_file_path)
+            np.savetxt(res_file_path, F_gen, delimiter=',') 
+        
+        if alg != "RNSGA2" and alg != "gNSGA2" and roi_type != "emo":
+            res_dir_path = os.path.join(f'../output/function_call_results_{mult_ref}', f'{roi_type}/{alg}/{problem_name.upper()}/m{n_obj}')
+            os.makedirs(res_dir_path, exist_ok=True)
+            count_each = np.array(res.algorithm.survival.count_each)
+            res_file_path = os.path.join(res_dir_path, f'function_call_{run_id}th_run.csv')
+            np.savetxt(res_file_path, count_each, fmt="%d")  
+    elif mult_ref == 2:
+        res1 = minimize(problem, algorithm, termination, seed=run_id, verbose=False, save_history=True)
+        res2 = minimize(problem, algorithm2, termination, seed=run_id, verbose=False, save_history=True)
+        # print("count_each:", res.algorithm.survival.count_each, len(res.algorithm.survival.count_each))
+        for i, res in enumerate([res1, res2]):
+            for idx, fevals in enumerate(range(100, 25001, 100)):
+                F_gen = res.history[idx].pop.get("F") 
+                res_dir_path = os.path.join(
+                    f'../output/results_{mult_ref}', 
+                    f'{roi_type}/{alg}/{problem_name.upper()}/m{n_obj}'
+                )
+                os.makedirs(res_dir_path, exist_ok=True)
+
+                res_file_path = os.path.join(
+                    res_dir_path, f'pop_{run_id}th_run_{fevals}fevals.csv'
+                )
+
+                # res1 は上書き "w"
+                # res2 は追記 "a"
+                mode = "w" if i == 0 else "a"
+
+                with open(res_file_path, mode) as f:
+                    np.savetxt(f, F_gen, delimiter=',')
+        
+        # if alg != "RNSGA2" and alg != "gNSGA2" and roi_type != "emo":
+        #     res_dir_path = os.path.join(f'../output/function_call_results_{mult_ref}', f'{roi_type}/{alg}/{problem_name.upper()}/m{n_obj}')
+        #     os.makedirs(res_dir_path, exist_ok=True)
+        #     count_each = np.array(res.algorithm.survival.count_each)
+        #     res_file_path = os.path.join(res_dir_path, f'function_call_{run_id}th_run.csv')
+        #     np.savetxt(res_file_path, count_each, fmt="%d")  
     # for idx, fevals in enumerate(range(100, 1000, 100)):
     #     F_gen = res.history[idx].pop.get("F") 
     #     res_dir_path = os.path.join('./results', f'{alg}/{problem_name.upper()}/m{n_obj}')
@@ -145,6 +190,7 @@ if __name__ == '__main__':
     parser.add_argument('--alg', type=str)
     parser.add_argument('--run_id', type=int)
     parser.add_argument('--roi_type', type=str)
+    parser.add_argument('--mult_ref', type=int)
     args = parser.parse_args()
 
     n_obj = args.n_obj   
@@ -152,4 +198,5 @@ if __name__ == '__main__':
     alg = args.alg
     run_id = args.run_id
     roi_type = args.roi_type
-    run(n_obj, problem_name, alg, run_id, roi_type)
+    mult_ref = args.mult_ref
+    run(n_obj, problem_name, alg, run_id, roi_type,mult_ref)
