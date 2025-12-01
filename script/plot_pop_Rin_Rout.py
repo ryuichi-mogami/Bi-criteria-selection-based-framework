@@ -14,8 +14,8 @@ from pymoo.util.nds.non_dominated_sorting import find_non_dominated
 # =========================
 # ユーザー設定
 # =========================
-roi = "roi-c"  # "roi-c" または "roi-p"
-SOL_FILE  = f"../output/results/{roi}/BNSGA2/DTLZ2/m2/pop_0th_run_300fevals.csv"
+roi = "roi-p"  # "roi-c" または "roi-p"
+SOL_FILE  = f"../output/results_1/{roi}/BNSGA2/DTLZ2/m2/pop_0th_run_300fevals.csv"
 m          = 2
 prob       = "DTLZ2"
 t          = 1
@@ -117,20 +117,24 @@ def plot_2d(PF, Pset, z, roi):
                color='black', s=3, alpha=0.2, rasterized=True)
 
     # solution set: R^out（バツ印）, R^in（青丸）
+    # if P_out_plot.size > 0:
+    #     ax.scatter(P_out_plot[:, 0], P_out_plot[:, 1],
+    #                color=(31/255, 119/255, 180/255),
+    #                marker='x', s=100, linewidths=2, rasterized=True)
     if P_out_plot.size > 0:
         ax.scatter(P_out_plot[:, 0], P_out_plot[:, 1],
-                   color=(31/255, 119/255, 180/255),
-                   marker='x', s=100, linewidths=2, rasterized=True)
+                   color=(255/255, 127/255, 14/255),
+                   marker='o', s=100, linewidths=2, rasterized=True)
     if P_in_plot.size > 0:
         ax.scatter(P_in_plot[:, 0], P_in_plot[:, 1],
                    color=(31/255, 119/255, 180/255),
                    marker='o', s=100, rasterized=True)
 
     # pivot（ROI-C のときだけ表示）
-    if roi == "roi-c":
-        ax.scatter(nearest_point[0], nearest_point[1],
-                   color=(255/255, 127/255, 14/255),
-                   marker='s', s=100)
+    # if roi == "roi-c":
+    #     ax.scatter(nearest_point[0], nearest_point[1],
+    #                color=(255/255, 127/255, 14/255),
+    #                marker='s', s=100)
 
     # ref point
     ax.scatter(ref_norm[0], ref_norm[1],
@@ -155,8 +159,8 @@ def plot_2d(PF, Pset, z, roi):
                    linestyle=(0, (1.9, 1)), linewidth=1.5, color='black')
 
     # 軸ラベルなど（体裁は元コードのまま）
-    ax.set_xlabel(r'$f_1$', fontsize=50)
-    ax.set_ylabel(r'$f_2$', fontsize=50)
+    # ax.set_xlabel(r'$f_1$', fontsize=50)
+    # ax.set_ylabel(r'$f_2$', fontsize=50)
 
     ax.set_xlim([0, 1 + 1])
     ax.set_ylim([0, 1 + 1])
@@ -175,7 +179,7 @@ def plot_2d(PF, Pset, z, roi):
         spine.set_linewidth(2.5)
     ax.tick_params(axis='both', which='both', length=0)
 
-    plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     # 保存
     os.makedirs(out_dir, exist_ok=True)
