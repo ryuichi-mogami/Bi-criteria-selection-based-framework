@@ -18,9 +18,15 @@ import pandas as pd
 # =========================
 n_obj_list   = [2]
 problems     = [
-    "DTLZ2"
+    "DTLZ1",
+    "DTLZ2",
+    "DTLZ3",
+    "DTLZ4",
+    "DTLZ5",
+    "DTLZ6",
+    "DTLZ7",
 ]
-mult_ref  = 2
+mult_ref  = 1
 roi_types   = ["roi-c"]
 algorithms   = ['RNSGA2','BNSGA2']#'BNSGA2', 'BIBEA', 'BSMSEMOA','RNSGA2-no'
 pop_sel_caption = {
@@ -184,8 +190,8 @@ def compute_igd_p_plus(X, PF, PF_norm, z, r, ideal, nadir):
 # ---------- 入出力（UUA 用に修正） ----------
 def sol_path(pop_sel, roi_type, alg, prob, m, run):
     if alg == "NSGA2":
-        base = f'../output/results/emo/{alg}/{prob}/m{m}/'
-        base_igdC =f'../output/igdC_plus/emo-{roi_type}/{alg}/{prob}/m{m}/'
+        base = f'../output/results_{mult_ref}/emo/{alg}/{prob}/m{m}/'
+        base_igdC =f'../output/igdC_plus_{mult_ref}/emo-{roi_type}/{alg}/{prob}/m{m}/'
     else:
         base = f'../output/results_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
         base_igdC =f'../output/igdC_plus_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
@@ -248,22 +254,22 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
     # PF
     ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
                 color='black', s=3, alpha=0.2, rasterized=True)
-    if roi_type != "emo": 
+    if roi_type != "emo" and alg != "NSGA2": 
         # ref point
         for i in range(len(z)):
             ax.scatter(ref_norm[i][0], ref_norm[i][1],
                     color=(44/255, 160/255, 44/255),
-                    marker='^', s=230)
+                    marker='^', s=300)
     # solution set
     ax.scatter(P_norm[:, 0], P_norm[:, 1],
-                color=(31/255, 119/255, 180/255), s=100, rasterized=True)
+                color=(31/255, 119/255, 180/255), s=300, rasterized=True)
 
     # nearest point
-    if roi_type == 'roi-c' or roi_type == 'roi-a':
+    if (roi_type == 'roi-c' or roi_type == 'roi-a') and alg != "NSGA2":
         for i in range(len(z)):
             ax.scatter(nearest_point[i][0], nearest_point[i][1],
                     color=(255/255, 127/255, 14/255),
-                    marker='s', s=100)
+                    marker='s', s=300)
         # ROI（正規化半径 r → 元スケールでは楕円）
         for i in range(len(z)):
             rx = r / (N[0] - I[0]) * (N[0] - I[0])  # = r
@@ -279,7 +285,7 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
         # ROI-P: 補助線（z の垂直・水平）
         # ax.axvline(ref_norm[0], linestyle=(0, (1.9, 1)), linewidth=1.5, color='black')
         # ax.axhline(ref_norm[1], linestyle=(0, (1.9, 1)), linewidth=1.5, color='black')
-    elif roi_type == 'roi-p':
+    elif roi_type == 'roi-p' and alg != "NSGA2":
         ax.set_xlim([0, 1 + 0.3]) 
         ax.set_ylim([0, 1 + 0.3])
         xlim = ax.get_xlim()
@@ -287,6 +293,7 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
         # ROI-P：z から小さい側（左・下方向）のみ線を引く
         print(ref_norm)
         print(xlim, ylim)
+        ref_norm = ref_norm.ravel() 
         ax.axvline(
             x=ref_norm[0],
             ymin=0.0,
@@ -305,8 +312,8 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
         )
 
     #軸ラベル設定
-    ax.set_xlabel(r'$f_1$', fontsize=50)
-    ax.set_ylabel(r'$f_2$', fontsize=50)
+    # ax.set_xlabel(r'$f_1$', fontsize=50)
+    # ax.set_ylabel(r'$f_2$', fontsize=50)
     #グラフの範囲指定
     # 範囲（元スケール）
     ax.set_xlim([0, 1 + 0.3]) 
@@ -317,15 +324,16 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
     ax.tick_params(axis='both', which='minor', labelsize=45)
     ax.set_aspect('equal', adjustable='box')
     # 目盛り表示
-    ax.set_xticks([0, 1])
-    ax.set_yticks([0, 1])
-
+    # ax.set_xticks([0, 1])
+    # ax.set_yticks([0, 1])
+    ax.set_xticks([])
+    ax.set_yticks([])
     # ラベルは実スケールの ideal / nadir
     ax.xaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_x, true_nadir_x)))
     ax.yaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_y, true_nadir_y)))
     ax.set_aspect('equal', adjustable='box')
 
-    plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     output_dir = f'../output/2d_image_median_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
     os.makedirs(output_dir, exist_ok=True)

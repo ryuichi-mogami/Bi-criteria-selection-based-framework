@@ -13,15 +13,15 @@ import pandas as pd
 # ユーザー設定
 # =========================
 # ここだけ指定すればOK（描画したい解集合CSV）
-mult_ref = 2
-roi = "roi-c"
+mult_ref = 1
+roi = "roi-p"
 # 問題設定（PFとzの読み込みに使用）
-alg = "RNSGA2"
+alg = "BSPEA2-drs"
 m          = 2
-prob       = "DTLZ2"
+prob       = "DTLZ3"
 r          = 0.1
-SOL_FILE  = f"../output/results_{mult_ref}/{roi}/{alg}/{prob}/m{m}/pop_0th_run_3100fevals.csv"
-out_dir    = f'../output/2d_image_single_{mult_ref}'
+SOL_FILE  = f"../output/results_{mult_ref}/{roi}/{alg}/{prob}/m{m}/pop_0th_run_25000fevals.csv"
+out_dir    = f'../output/2d_image_single_{mult_ref}/{prob}_m{m}_{roi}_{alg}'
 dpi_save   = 600
 
 mpl.rcParams['font.family'] = 'serif'
@@ -83,13 +83,13 @@ def plot_2d(PF, Pset, z):
                 marker='^', s=230)
     # solution set
     ax.scatter(P_norm[:, 0], P_norm[:, 1],
-               color=(31/255, 119/255, 180/255), s=100, rasterized=True)
+               color=(31/255, 119/255, 180/255), s=300, rasterized=True)
 
     # nearest point
     for i in range(len(z)):
         ax.scatter(nearest_point[i][0], nearest_point[i][1],
                 color=(255/255, 127/255, 14/255),
-                marker='s', s=100)
+                marker='s', s=230)
 
     # ROI（正規化半径 r → 元スケールでは楕円, 正規化空間では円）
     # ※「切り出し」は行わない＝可視化のみ
@@ -105,19 +105,21 @@ def plot_2d(PF, Pset, z):
         ax.add_patch(roi_ellipse)
 
     # 軸ラベルなど
-    ax.set_xlabel(r'$f_1$', fontsize=50)
-    ax.set_ylabel(r'$f_2$', fontsize=50)
+    # ax.set_xlabel(r'$f_1$', fontsize=50)
+    # ax.set_ylabel(r'$f_2$', fontsize=50)
 
     # 範囲（正規化）
-    ax.set_xlim([0, 1 + 0.3])
-    ax.set_ylim([0, 1 + 0.3])
+    ax.set_xlim([0, 5 + 0.3])
+    ax.set_ylim([0, 5 + 0.3])
 
     # 目盛とラベル
     ax.tick_params(axis='both', which='major', labelsize=45)
     ax.tick_params(axis='both', which='minor', labelsize=45)
     ax.set_aspect('equal', adjustable='box')
-    ax.set_xticks([0, 1])
-    ax.set_yticks([0, 1])
+    # ax.set_xticks([0, 1])
+    # ax.set_yticks([0, 1])
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.xaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_x, true_nadir_x)))
     ax.yaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_y, true_nadir_y)))
 
@@ -125,8 +127,8 @@ def plot_2d(PF, Pset, z):
         spine.set_linewidth(2.5)
     ax.tick_params(axis='both', which='both', length=0)
 
-    plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
-
+    # plt.subplots_adjust(left=0.25, right=0.99, top=0.99, bottom=0.25)
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
     # 保存
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.splitext(os.path.basename(SOL_FILE))[0]

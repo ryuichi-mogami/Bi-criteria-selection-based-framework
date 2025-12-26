@@ -7,14 +7,15 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
-from matplotlib.patches import Ellipse
+from matplotlib.patches import Ellipse, Rectangle, PathPatch
+from matplotlib.path import Path
 import pandas as pd
 from pymoo.util.nds.non_dominated_sorting import find_non_dominated
 
 # =========================
 # ユーザー設定
 # =========================
-roi = "roi-p"  # "roi-c" または "roi-p"
+roi = "roi-c"  # "roi-c" または "roi-p"
 SOL_FILE  = f"../output/results_1/{roi}/BNSGA2/DTLZ2/m2/pop_0th_run_300fevals.csv"
 m          = 2
 prob       = "DTLZ2"
@@ -75,10 +76,11 @@ def plot_2d(PF, Pset, z, roi):
     pivot_point   = nondom_F[nearest_idx]         # 元スケール（ROI-C 判定用）
 
     # ----- R^in / R^out の判定（Pset に対して） -----
+    roic = 1.3
     if roi == "roi-c":
         diff   = Pset - pivot_point
         val    = np.sum((diff / r)**2, axis=1)
-        mask_in = val <= 1.0
+        mask_in = val <= roic**2
     elif roi == "roi-p":
         less_eq    = np.all(Pset <= z, axis=1)
         greater_eq = np.all(Pset >= z, axis=1)
@@ -101,6 +103,8 @@ def plot_2d(PF, Pset, z, roi):
         P_out_plot = P_out_norm[idx_out]
     else:
         P_out_plot = P_out_norm
+    # P_in_plot = P_in_norm
+    # P_out_plot = P_out_norm
     # if n_in > 0 and n_out > n_in:
     #     # 等間隔にインデックスを取る（再現性のある間引き）
     #     idx = np.linspace(0, n_out - 1, num=n_in, dtype=int)
@@ -111,6 +115,59 @@ def plot_2d(PF, Pset, z, roi):
 
     # ----- Figure / Axes -----
     fig, ax = plt.subplots(figsize=(6.8, 6.8))
+    # ==============================
+    # ★ R^in / R^out の背景塗りつぶし（imshow版, 重なりなし）
+    # ==============================
+    color_in  = (31/255, 119/255, 180/255)   # 青
+    color_out = (255/255, 127/255, 14/255)   # オレンジ
+
+    # 背景用グリッド
+    N_bg = 400
+    xs = np.linspace(0.0, 2.0, N_bg)
+    ys = np.linspace(0.0, 2.0, N_bg)
+    X, Y = np.meshgrid(xs, ys)
+
+    # RGBA 画像
+    bg = np.zeros((N_bg, N_bg, 4), dtype=float)
+
+    if roi == "roi-c":
+        # 正規化空間での楕円
+        rx = r * roic / (N - I)[0]   # 元スケール r を正規化スケールに調整
+        ry = r * roic / (N - I)[1]
+        cx, cy = nearest_point[0], nearest_point[1]
+
+        inside = ((X - cx) / rx)**2 + ((Y - cy) / ry)**2 <= 1.0
+        mask_in_bg  = inside
+        mask_out_bg = ~inside
+
+    elif roi == "roi-p":
+        zx, zy = ref_norm[0], ref_norm[1]
+        mask_in_bg  = ((X <= zx) & (Y <= zy)) | ((X >= zx) & (Y >= zy))
+        mask_out_bg = ~mask_in_bg
+
+    else:
+        raise ValueError("roi は 'roi-c' か 'roi-p' を指定してください。")
+
+    # R^out：薄いオレンジ
+    bg[mask_out_bg, 0] = color_out[0]
+    bg[mask_out_bg, 1] = color_out[1]
+    bg[mask_out_bg, 2] = color_out[2]
+    bg[mask_out_bg, 3] = 0.05   # かなり薄め
+
+    # R^in：薄い青（ここで上書きするので R^out と重ならない）
+    bg[mask_in_bg, 0] = color_in[0]
+    bg[mask_in_bg, 1] = color_in[1]
+    bg[mask_in_bg, 2] = color_in[2]
+    bg[mask_in_bg, 3] = 0.10    # R^out より少し濃い
+
+    # 背景としてプロット
+    ax.imshow(
+        bg,
+        extent=(0.0, 2.0, 0.0, 2.0),
+        origin='lower',
+        zorder=0,
+        interpolation='nearest'
+    )
 
     # PF
     ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
@@ -124,11 +181,11 @@ def plot_2d(PF, Pset, z, roi):
     if P_out_plot.size > 0:
         ax.scatter(P_out_plot[:, 0], P_out_plot[:, 1],
                    color=(255/255, 127/255, 14/255),
-                   marker='o', s=100, linewidths=2, rasterized=True)
+                   marker='o', s=300, linewidths=2, rasterized=True)
     if P_in_plot.size > 0:
         ax.scatter(P_in_plot[:, 0], P_in_plot[:, 1],
                    color=(31/255, 119/255, 180/255),
-                   marker='o', s=100, rasterized=True)
+                   marker='o', s=300, rasterized=True)
 
     # pivot（ROI-C のときだけ表示）
     # if roi == "roi-c":
@@ -143,8 +200,8 @@ def plot_2d(PF, Pset, z, roi):
 
     # ROI 可視化
     if roi == "roi-c":
-        rx = r
-        ry = r
+        rx = r*roic
+        ry = r*roic
         roi_ellipse = Ellipse(
             xy=(nearest_point[0], nearest_point[1]),
             width=2*rx, height=2*ry,

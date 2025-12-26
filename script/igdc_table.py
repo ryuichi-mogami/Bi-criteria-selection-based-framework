@@ -12,8 +12,8 @@ start_all = time.perf_counter()  # 全体計測開始
 n_obj        = [2,4,6] 
 problems     = ['DTLZ1','DTLZ2','DTLZ3','DTLZ4','DTLZ5','DTLZ6','DTLZ7']#'DTLZ1','DTLZ2','DTLZ3','DTLZ4','DTLZ5','DTLZ6','DTLZ7' , 'SDTLZ1', 'SDTLZ2', 'SDTLZ3', 'SDTLZ4'
 ALGO_SETS = {
-    'IGD-C': ['BNSGA2', 'BIBEA', 'BSMSEMOA', 'RNSGA2'],
-    'IGD-P': ['BNSGA2','gNSGA2'],
+    'IGD-C': ['BNSGA2', 'BIBEA', 'BSMSEMOA', 'BNSGA3', 'BSPEA2','RNSGA2'],
+    'IGD-P': ['BNSGA2','BNSGA2-drs', 'BIBEA', 'BSMSEMOA','BNSGA3', 'BSPEA2','gNSGA2'],
 }
 ROI2METRIC = {
     'roi-c': 'IGD-C',
@@ -25,6 +25,9 @@ algorithm_captions = {
     'BSMSEMOA':   'B-SMS-EMOA',
     'RNSGA2':   'R-NSGA-II',
     'gNSGA2':   'g-NSGA-II',
+    'BNSGA2-drs': 'B-NSGA-II-DRS',
+    'BNSGA3': 'B-NSGA-III',
+    'BSPEA2': 'B-SPEA2',
 }
 
 t         = 1
@@ -104,7 +107,7 @@ output_path = f'../output/results_table/igdc_table.tex'
 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 n = [50000, 50086, 102340, 455126, 3162510]
 
-for roi_type in ["roi-p"]:
+for roi_type in ["roi-c","roi-p"]:
     metric = ROI2METRIC[roi_type]
     algorithms = ALGO_SETS[metric]
 
@@ -156,11 +159,11 @@ for roi_type in ["roi-p"]:
                         continue
                     if alg == "gNSGA2" and roi_type =="roi-c":
                         continue
-                    if alg == "NSGA2" or alg == "IBEA" or alg == "SMSEMOA":
-                        sol_file = f'../output/results/emo/{alg}/{prob}/m{m}/pop_{run}th_run_50000fevals.csv'
+                    if alg == "NSGA2" or alg == "IBEA" or alg == "SMSEMOA" or alg == "NSGA3" or alg == "SPEA2":
+                        sol_file = f'../output/results_1/emo/{alg}/{prob}/m{m}/pop_{run}th_run_50000fevals.csv'
                     else:
-                        sol_file = f'../output/results/{roi_type}/{alg}/{prob}/m{m}/pop_{run}th_run_50000fevals.csv'
-                    igdc_file = sol_file.replace('results', 'igdC_plus')
+                        sol_file = f'../output/results_1/{roi_type}/{alg}/{prob}/m{m}/pop_{run}th_run_50000fevals.csv'
+                    igdc_file = sol_file.replace('results_1', 'igdC_plus_1')
                     igdc_file = igdc_file.replace('emo', f'emo_{roi_type}')
                     if os.path.exists(igdc_file):
                         igdc_val = float(np.loadtxt(igdc_file))
@@ -284,10 +287,10 @@ for roi_type in ["roi-p"]:
                 #         mark = ''
 
                     # セルにマークを付けて書き込む
-                    if alg == "BSMSEMOA" and m >= 4:
-                        cells.append('-')
-                    else:
-                        cells.append(f'\\cellcolor{{black!{shade[alg]}}}{mu:.4f}')
+                    # if alg == "BSMSEMOA" and m >= 4:
+                    #     cells.append('-')
+                    # else:
+                    cells.append(f'\\cellcolor{{black!{shade[alg]}}}{mu:.4f}')
                     # cells.append(f'\\cellcolor{{black!{shade[sel]}}}{mu:.4f}{mark}')
 
                 line = '    ' + ' & '.join(cells) + r' \\'

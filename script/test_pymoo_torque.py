@@ -9,6 +9,7 @@ from pymoo.algorithms.moo.nsga3 import NSGA3
 from pymoo.algorithms.moo.sms import SMSEMOA
 from pymoo.algorithms.moo.ibea import IBEA
 from pymoo.algorithms.moo.moead import MOEAD
+from pymoo.algorithms.moo.spea2 import SPEA2
 
 # from pymoo.algorithms.moo.bibea import BIBEA
 # from pymoo.algorithms.moo.bnsga2 import BNSGA2
@@ -16,8 +17,9 @@ from pymoo.algorithms.moo.moead import MOEAD
 
 from bsf.bibea import BIBEA
 from bsf.bnsga2 import BNSGA2
+from bsf.bnsga3 import BNSGA3
 from bsf.bsms import BSMSEMOA
-
+from bsf.bspea2 import BSPEA2
 # from pymoo.algorithms.moo.rnsga2 import RNSGA2
 # from pymoo.algorithms.moo.gnsga2 import gNSGA2
 
@@ -68,6 +70,15 @@ def run(n_obj, problem_name, alg, run_id, roi_type, mult_ref):
             algorithm2 = BNSGA2(pop_size=50, roi_type = roi_type, roi_id=2, alpha= 0)
             emo_max_fess = 25000
             termination = get_termination("n_eval", emo_max_fess)    
+    if alg == "BNSGA3":
+        ref_dirs = get_reference_directions("energy", n_obj, 100, seed=1)
+        if mult_ref == 1:
+            algorithm = BNSGA3(ref_dirs, pop_size=100, roi_type = roi_type, roi_id = 1)
+        elif mult_ref == 2:
+            algorithm = BNSGA3(ref_dirs, pop_size=50, roi_type = roi_type, roi_id=1)
+            algorithm2 = BNSGA3(ref_dirs, pop_size=50, roi_type = roi_type, roi_id=2)
+            emo_max_fess = 25000
+            termination = get_termination("n_eval", emo_max_fess)    
     elif alg == "BNSGA2-drs":
         if mult_ref == 1:
             algorithm = BNSGA2(pop_size=100, roi_type = roi_type, roi_id = 1,  alpha=0.1)
@@ -80,6 +91,22 @@ def run(n_obj, problem_name, alg, run_id, roi_type, mult_ref):
         algorithm = BIBEA(pop_size=100, roi_type = roi_type)
     elif alg == "BSMSEMOA":
         algorithm = BSMSEMOA(pop_size=100, n_offspring=1, roi_type = roi_type)
+    if alg == "BSPEA2":
+        if mult_ref == 1:
+            algorithm = BSPEA2(pop_size=100, roi_type = roi_type, roi_id = 1, alpha=0)
+        elif mult_ref == 2:
+            algorithm = BSPEA2(pop_size=50, roi_type = roi_type, roi_id=1, alpha=0)
+            algorithm2 = BSPEA2(pop_size=50, roi_type = roi_type, roi_id=2, alpha=0)
+            emo_max_fess = 25000
+            termination = get_termination("n_eval", emo_max_fess)    
+    if alg == "BSPEA2-drs":
+        if mult_ref == 1:
+            algorithm = BSPEA2(pop_size=100, roi_type = roi_type, roi_id = 1, alpha=0.1)
+        elif mult_ref == 2:
+            algorithm = BSPEA2(pop_size=50, roi_type = roi_type, roi_id=1, alpha=0.1)
+            algorithm2 = BSPEA2(pop_size=50, roi_type = roi_type, roi_id=2, alpha=0.1)
+            emo_max_fess = 25000
+            termination = get_termination("n_eval", emo_max_fess)    
     elif alg == "RNSGA2":
         algorithm = RNSGA2(pop_size=100, mult_ref=mult_ref)
     elif alg == "gNSGA2":
@@ -92,6 +119,11 @@ def run(n_obj, problem_name, alg, run_id, roi_type, mult_ref):
         algorithm = SMSEMOA(pop_size=100, n_offspring=1)
     elif alg == "IBEA":
         algorithm = IBEA(pop_size=100)
+    elif alg == "NSGA3":
+        ref_dirs = get_reference_directions("energy", n_obj, 100, seed=1)
+        algorithm = NSGA3(ref_dirs, pop_size=100)
+    elif alg == "SPEA2":
+        algorithm = SPEA2(pop_size=100)
     # else:
     #     print(f"{alg} is not available.")
     #     exit()

@@ -9,16 +9,16 @@ if __name__ == '__main__':
     for mult_ref in [1]:
         for roi_type in ["roi-c", "roi-p"]:
             for problem_name in ["DTLZ1", "DTLZ2","DTLZ3", "DTLZ4", "DTLZ5", "DTLZ6", "DTLZ7"]: #"DTLZ1", "DTLZ3", "DTLZ4", "WFG1", "WFG2", "WFG3", "WFG4", "WFG5", "WFG6", "WFG7", "WFG8", "WFG9"
-                for alg in ['BNSGA2-drs']: #'BNSGA2', 'BIBEA', 'BSMSEMOA', 'RNSGA2-no','RNSGA2', 'gNSGA2', "IBEA", "SMSEMOA", "NSGA2"
+                for alg in ['NSGA3','SPEA2', 'BSPEA2-drs']: #'BNSGA2', 'BIBEA', 'BSMSEMOA', 'RNSGA2-no','RNSGA2', 'gNSGA2', "IBEA", "SMSEMOA", "NSGA2"
                     if alg == "RNSGA2" and roi_type =="roi-p":
                         continue
                     if alg == "gNSGA2" and roi_type =="roi-c":
                         continue
                     if roi_type == "emo":
-                        if alg in ["BNSGA2", "BIBEA", "BSMSEMOA", "RNSGA2", "gNSGA2", "BNSGA2-drs"]:
+                        if alg in ["BNSGA2", "BIBEA", "BSMSEMOA", "RNSGA2", "gNSGA2", "BNSGA2-drs", "BNSGA3", "BSPEA2", "BSPEA2-drs"]:
                             continue
                     if roi_type == "roi-c" or roi_type == "roi-p":
-                        if alg in ["NSGA2", "SMSEMOA", "IBEA"]:
+                        if alg in ["NSGA2", "SMSEMOA", "IBEA", "NSGA3","SPEA2"]:
                             continue
                     for n_obj in [2,4,6]:
                         for run_id in range(31):            

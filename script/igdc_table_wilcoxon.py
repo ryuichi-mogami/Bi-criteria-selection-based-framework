@@ -26,6 +26,8 @@ algorithm_captions = {
     'RNSGA2':   'R-NSGA-II',
     'gNSGA2':   'g-NSGA-II',
     'NSGA2':    'NSGA-II',
+    'BNSGA3':  'B-NSGA-III',
+    'BSPEA2': 'B-SPEA2',
 }
 
 t        = 1

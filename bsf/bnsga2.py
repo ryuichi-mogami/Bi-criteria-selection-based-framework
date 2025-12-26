@@ -26,10 +26,6 @@ from pymoo.util.nds.non_dominated_sorting import find_non_dominated
 # Binary Tournament Selection Function
 # ---------------------------------------------------------------------------------------------------------
 
-def asf1(point, ref_point, weight):
-    scalar_value = np.max(weight * (point - ref_point))
-    return scalar_value    
-
 def binary_tournament(pop, P, algorithm, **kwargs):
     n_tournaments, n_parents = P.shape
 
