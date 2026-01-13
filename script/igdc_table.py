@@ -12,8 +12,8 @@ start_all = time.perf_counter()  # 全体計測開始
 n_obj        = [2,4,6] 
 problems     = ['DTLZ1','DTLZ2','DTLZ3','DTLZ4','DTLZ5','DTLZ6','DTLZ7']#'DTLZ1','DTLZ2','DTLZ3','DTLZ4','DTLZ5','DTLZ6','DTLZ7' , 'SDTLZ1', 'SDTLZ2', 'SDTLZ3', 'SDTLZ4'
 ALGO_SETS = {
-    'IGD-C': ['BNSGA2', 'BIBEA', 'BSMSEMOA', 'BNSGA3', 'BSPEA2','RNSGA2'],
-    'IGD-P': ['BNSGA2','BNSGA2-drs', 'BIBEA', 'BSMSEMOA','BNSGA3', 'BSPEA2','gNSGA2'],
+    'IGD-C': ['BNSGA2', 'BIBEA', 'BSMSEMOA', 'BSPEA2','BNSGA3', 'BSPEA2-drs', 'BNSGA2-drs','RNSGA2'],
+    'IGD-P': ['BNSGA2','BIBEA', 'BSMSEMOA','BSPEA2','BNSGA3', 'BSPEA2-drs', 'BNSGA2-drs', 'gNSGA2'],
 }
 ROI2METRIC = {
     'roi-c': 'IGD-C',
@@ -25,9 +25,10 @@ algorithm_captions = {
     'BSMSEMOA':   'B-SMS-EMOA',
     'RNSGA2':   'R-NSGA-II',
     'gNSGA2':   'g-NSGA-II',
-    'BNSGA2-drs': 'B-NSGA-II-DRS',
+    'BNSGA2-drs': 'B-MNSGA-II',
     'BNSGA3': 'B-NSGA-III',
     'BSPEA2': 'B-SPEA2',
+    'BSPEA2-drs': 'B-MSPEA2',
 }
 
 t         = 1
@@ -187,8 +188,8 @@ for roi_type in ["roi-c","roi-p"]:
         f.write(r'\begin{table}[t]' + '\n')
         f.write(r'  \centering' + '\n')
         f.write(r'  \footnotesize' + '\n')
-        caption_text = f"IGD$^+$-Cの31試行の平均値を示す. " if metric == 'IGD-C' \
-                else f"IGD$^+$-Pの31試行の平均値を示す. "
+        caption_text = f"各B-EMOAsとg-NSGA-IIの比較結果 (ROI-C). " if metric == 'IGD-C' \
+                else f"各B-EMOAsとg-NSGA-IIの比較結果 (ROI-P)."
         f.write(f'  \\caption{{{caption_text}}}\n')
         label_key = 'igdc' if metric == 'IGD-C' else 'igdp'
         f.write(f'  \\label{{tab:{label_key}}}' + '\n\n')
@@ -298,7 +299,7 @@ for roi_type in ["roi-c","roi-p"]:
 
         f.write(r'    \bottomrule' + '\n')
         f.write(r'  \end{tabular}' + '\n')
-        f.write(r'  }%    ← resizebox の閉じ' + '\n')
+        f.write(r'  }% ' + '\n')
         f.write(r'\end{table}' + '\n\n')
             
 

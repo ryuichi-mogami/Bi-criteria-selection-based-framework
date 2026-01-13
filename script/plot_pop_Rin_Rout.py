@@ -15,8 +15,8 @@ from pymoo.util.nds.non_dominated_sorting import find_non_dominated
 # =========================
 # ユーザー設定
 # =========================
-roi = "roi-c"  # "roi-c" または "roi-p"
-SOL_FILE  = f"../output/results_1/{roi}/BNSGA2/DTLZ2/m2/pop_0th_run_300fevals.csv"
+roi = "roi-p"  # "roi-c" または "roi-p"
+SOL_FILE  = f"../output/results_1/{roi}/BNSGA2/DTLZ2/m2/pop_0th_run_200fevals.csv"
 m          = 2
 prob       = "DTLZ2"
 t          = 1
@@ -70,6 +70,9 @@ def plot_2d(PF, Pset, z, roi):
     nondom_F   = Pset[nondom_idx]
     nondom_F_norm = normalize_points(nondom_F, I, N)
 
+    N = len(P_norm)  # 全体集団サイズ
+    nondom_mask = np.zeros(N, dtype=bool)
+    nondom_mask[nondom_idx] = True
     # ref_point (z) に最も近い非劣解を pivot とする
     nearest_idx = np.argmin(np.linalg.norm(nondom_F - z, axis=1))
     nearest_point = nondom_F_norm[nearest_idx]
@@ -87,24 +90,33 @@ def plot_2d(PF, Pset, z, roi):
         mask_in    = np.logical_or(less_eq, greater_eq)
     else:
         raise ValueError("roi は 'roi-c' か 'roi-p' を指定してください。")
-
-    P_in_norm  = P_norm[mask_in]
-    P_out_norm = P_norm[~mask_in]
+    n_in = int(mask_in.sum())
+    k = 50
+    print(f"R^in の個数: {n_in}")
+    if n_in < k and roi == "roi-c":
+        dist = np.linalg.norm(diff, axis=1)
+        order = np.argsort(dist)    
+        cand = order[~mask_in[order]]
+        need = k - n_in
+        add_idx = cand[:need]
+        mask_in[add_idx] = True
+    
+    # mask_in = nondom_mask
     # ----- R^out を R^in と同じ個数に間引き -----
-    n_in  = P_in_norm.shape[0]
-    n_out = P_out_norm.shape[0]
-    if n_in > 10:
-        idx_in = np.linspace(0, n_in - 1, num=10, dtype=int)
-        P_in_plot = P_in_norm[idx_in]
-    else:
-        P_in_plot = P_in_norm
-    if n_out > 10:
-        idx_out = np.linspace(0, n_out - 1, num=10, dtype=int)
-        P_out_plot = P_out_norm[idx_out]
-    else:
-        P_out_plot = P_out_norm
-    # P_in_plot = P_in_norm
-    # P_out_plot = P_out_norm
+    # n_in  = P_in_norm.shape[0]
+    # n_out = P_out_norm.shape[0]
+    # if n_in > 10:
+    #     idx_in = np.linspace(0, n_in - 1, num=10, dtype=int)
+    #     P_in_plot = P_in_norm[idx_in]
+    # else:
+    #     P_in_plot = P_in_norm
+    # if n_out > 10:
+    #     idx_out = np.linspace(0, n_out - 1, num=10, dtype=int)
+    #     P_out_plot = P_out_norm[idx_out]
+    # else:
+    #     P_out_plot = P_out_norm
+    P_in_plot = P_norm[mask_in]
+    P_out_plot = P_norm[~mask_in]
     # if n_in > 0 and n_out > n_in:
     #     # 等間隔にインデックスを取る（再現性のある間引き）
     #     idx = np.linspace(0, n_out - 1, num=n_in, dtype=int)
@@ -161,17 +173,17 @@ def plot_2d(PF, Pset, z, roi):
     bg[mask_in_bg, 3] = 0.10    # R^out より少し濃い
 
     # 背景としてプロット
-    ax.imshow(
-        bg,
-        extent=(0.0, 2.0, 0.0, 2.0),
-        origin='lower',
-        zorder=0,
-        interpolation='nearest'
-    )
+    # ax.imshow(
+    #     bg,
+    #     extent=(0.0, 2.0, 0.0, 2.0),
+    #     origin='lower',
+    #     zorder=0,
+    #     interpolation='nearest'
+    # )
 
     # PF
-    ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
-               color='black', s=3, alpha=0.2, rasterized=True)
+    # ax.scatter(PF_norm[:, 0], PF_norm[:, 1],
+    #            color='black', s=3, alpha=0.2, rasterized=True)
 
     # solution set: R^out（バツ印）, R^in（青丸）
     # if P_out_plot.size > 0:
@@ -180,23 +192,21 @@ def plot_2d(PF, Pset, z, roi):
     #                marker='x', s=100, linewidths=2, rasterized=True)
     if P_out_plot.size > 0:
         ax.scatter(P_out_plot[:, 0], P_out_plot[:, 1],
-                   color=(255/255, 127/255, 14/255),
-                   marker='o', s=300, linewidths=2, rasterized=True)
+                #    color=(255/255, 127/255, 14/255),
+                     color="dimgrey",
+                   marker='o', s=100, linewidths=2, rasterized=True)
     if P_in_plot.size > 0:
         ax.scatter(P_in_plot[:, 0], P_in_plot[:, 1],
-                   color=(31/255, 119/255, 180/255),
-                   marker='o', s=300, rasterized=True)
+                #   color=(31/255, 119/255, 180/255),
+                color="firebrick",
+                   marker='o', s=100, rasterized=True)
 
     # pivot（ROI-C のときだけ表示）
-    # if roi == "roi-c":
-    #     ax.scatter(nearest_point[0], nearest_point[1],
-    #                color=(255/255, 127/255, 14/255),
-    #                marker='s', s=100)
+    if roi == "roi-c":
+        ax.scatter(nearest_point[0], nearest_point[1],
+                   color=(255/255, 127/255, 14/255),
+                   marker='s', s=200)
 
-    # ref point
-    ax.scatter(ref_norm[0], ref_norm[1],
-               color=(44/255, 160/255, 44/255),
-               marker='^', s=230)
 
     # ROI 可視化
     if roi == "roi-c":
@@ -206,27 +216,33 @@ def plot_2d(PF, Pset, z, roi):
             xy=(nearest_point[0], nearest_point[1]),
             width=2*rx, height=2*ry,
             fill=False, edgecolor='black',
-            linestyle=(0, (1.9, 1)), linewidth=1.5
+            linestyle=(0, (1.9, 1)), linewidth=1.5,
+            zorder=1,   # ← 低め
         )
         ax.add_patch(roi_ellipse)
     elif roi == "roi-p":
         ax.axvline(ref_norm[0],
-                   linestyle=(0, (1.9, 1)), linewidth=1.5, color='black')
+                   linestyle=(0, (1.9, 1)), linewidth=1.5, color='black',zorder=1,  )
         ax.axhline(ref_norm[1],
-                   linestyle=(0, (1.9, 1)), linewidth=1.5, color='black')
+                   linestyle=(0, (1.9, 1)), linewidth=1.5, color='black',zorder=1, )
 
+    # ref point
+    ax.scatter(ref_norm[0], ref_norm[1],
+               color=(44/255, 160/255, 44/255),
+               marker='^', s=200,zorder=10)
     # 軸ラベルなど（体裁は元コードのまま）
-    # ax.set_xlabel(r'$f_1$', fontsize=50)
-    # ax.set_ylabel(r'$f_2$', fontsize=50)
+    ax.set_xlabel(r'$f_1$', fontsize=50)
+    ax.set_ylabel(r'$f_2$', fontsize=50)
 
-    ax.set_xlim([0, 1 + 1])
-    ax.set_ylim([0, 1 + 1])
+    ax.set_xlim(0.15, 1.9)
+    ax.set_ylim(0.15, 1.9)
+
 
     ax.tick_params(axis='both', which='major', labelsize=45)
     ax.tick_params(axis='both', which='minor', labelsize=45)
     ax.set_aspect('equal', adjustable='box')
-    ax.set_xticks([0, 1])
-    ax.set_yticks([0, 1])
+    ax.set_xticks([])
+    ax.set_yticks([])
     ax.xaxis.set_major_formatter(
         FuncFormatter(make_endpoints_formatter(true_ideal_x, true_nadir_x)))
     ax.yaxis.set_major_formatter(
@@ -236,7 +252,7 @@ def plot_2d(PF, Pset, z, roi):
         spine.set_linewidth(2.5)
     ax.tick_params(axis='both', which='both', length=0)
 
-    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
+    # plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     # 保存
     os.makedirs(out_dir, exist_ok=True)

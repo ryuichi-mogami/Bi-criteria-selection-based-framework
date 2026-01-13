@@ -18,17 +18,11 @@ import pandas as pd
 # =========================
 n_obj_list   = [2]
 problems     = [
-    "DTLZ1",
-    "DTLZ2",
-    "DTLZ3",
-    "DTLZ4",
-    "DTLZ5",
-    "DTLZ6",
     "DTLZ7",
-]
+]       
 mult_ref  = 1
 roi_types   = ["roi-c"]
-algorithms   = ['RNSGA2','BNSGA2']#'BNSGA2', 'BIBEA', 'BSMSEMOA','RNSGA2-no'
+algorithms   = ['BNSGA2', 'BIBEA', 'BSMSEMOA','BSPEA2','BNSGA3','BNSGA2-drs','BSPEA2-drs','RNSGA2','gNSGA2']#'BNSGA2', 'BIBEA', 'BSMSEMOA','RNSGA2-no'
 pop_sel_caption = {
     'POP': 'TRUE'    # 正規化は真の端点
 }
@@ -101,7 +95,6 @@ def normalize_points(X, ideal, nadir):
 def compute_igd_c_plus(X, PF, PF_norm, z, r, ideal, nadir, prob, m):
     # X_norm = normalize_points(X, ideal, nadir)
     # z_norm = normalize_points(z, ideal, nadir)
-
     distance_list = np.zeros(len(PF))
     for i, p in enumerate(PF):
         distance_list[i] = np.linalg.norm(p - z)
@@ -233,8 +226,10 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
     true_ideal_y, true_nadir_y = PF[:, 1].min(), PF[:, 1].max() 
     true_ideal = PF.min(axis=0) # [ideal_x, ideal_y] 
     true_nadir = PF.max(axis=0) # [nadir_x, nadir_y]
+    print(true_ideal, true_nadir)
     I, N = (true_ideal, true_nadir)
     PF_norm  = normalize_points(PF,  I, N)
+    print(PF_norm.max(axis=0), PF_norm.min(axis=0))
     P_norm   = normalize_points(Pset, I, N)
     ref_norm = normalize_points(z,    I, N)
     nearest_point = []
@@ -259,17 +254,17 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
         for i in range(len(z)):
             ax.scatter(ref_norm[i][0], ref_norm[i][1],
                     color=(44/255, 160/255, 44/255),
-                    marker='^', s=300)
+                    marker='^', s=200,zorder=10)
     # solution set
     ax.scatter(P_norm[:, 0], P_norm[:, 1],
-                color=(31/255, 119/255, 180/255), s=300, rasterized=True)
+                color=(31/255, 119/255, 180/255), s=200, rasterized=True)
 
     # nearest point
     if (roi_type == 'roi-c' or roi_type == 'roi-a') and alg != "NSGA2":
-        for i in range(len(z)):
-            ax.scatter(nearest_point[i][0], nearest_point[i][1],
-                    color=(255/255, 127/255, 14/255),
-                    marker='s', s=300)
+        # for i in range(len(z)):
+        #     ax.scatter(nearest_point[i][0], nearest_point[i][1],
+        #             color=(255/255, 127/255, 14/255),
+        #             marker='s', s=300)
         # ROI（正規化半径 r → 元スケールでは楕円）
         for i in range(len(z)):
             rx = r / (N[0] - I[0]) * (N[0] - I[0])  # = r
@@ -290,30 +285,35 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
         ax.set_ylim([0, 1 + 0.3])
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
+        def is_feasible_wrt_pf_dominance(z, PF, eps=0.0):
+            """
+            feasible: PF上のどれかの点が z を（弱く）支配する
+            ∃p∈PF: p_i <= z_i (∀i)
+            """
+            z = np.asarray(z, dtype=float).ravel()
+            PF = np.asarray(PF, dtype=float)
+            return bool(np.any(np.all(PF <= z + eps, axis=1)))
         # ROI-P：z から小さい側（左・下方向）のみ線を引く
         print(ref_norm)
         print(xlim, ylim)
+        feasible = is_feasible_wrt_pf_dominance(ref_norm, PF_norm)
         ref_norm = ref_norm.ravel() 
-        ax.axvline(
-            x=ref_norm[0],
-            ymin=0.0,
-            ymax=(ref_norm[1] - ylim[0]) / (ylim[1] - ylim[0]),  # zより左側のみ
-            linestyle=(0, (1.9, 1)),
-            linewidth=1.5,
-            color='black'
-        )
-        ax.axhline(
-            y=ref_norm[1],
-            xmin=0,
-            xmax=(ref_norm[0] - xlim[0]) / (xlim[1] - xlim[0]),
-            linestyle=(0, (1.9, 1)),
-            linewidth=1.5,
-            color='black'
-        )
 
+        #ref_norm is fesible
+        print("feasible:", feasible)
+        if feasible:
+            ax.axvline(x = ref_norm[0], ymin = 0, ymax = (ref_norm[1] - ylim[0]) / (ylim[1] - ylim[0]),
+                linestyle=(0, (1.9, 1)), linewidth=1.5, color='black',zorder=1, )
+            ax.axhline(y = ref_norm[1], xmin = 0, xmax = (ref_norm[0] - xlim[0]) / (xlim[1] - xlim[0]),
+                linestyle=(0, (1.9, 1)), linewidth=1.5, color='black',zorder=1, )
+        else:
+            ax.axvline(x = ref_norm[0], ymin = (ref_norm[1] - ylim[0]) / (ylim[1] - ylim[0]), ymax = 1,
+                linestyle=(0, (1.9, 1)), linewidth=1.5, color='black',zorder=1, )
+            ax.axhline(y = ref_norm[1], xmin = (ref_norm[0] - xlim[0]) / (xlim[1] - xlim[0]), xmax = 1,
+                linestyle=(0, (1.9, 1)), linewidth=1.5, color='black',zorder=1, )
     #軸ラベル設定
-    # ax.set_xlabel(r'$f_1$', fontsize=50)
-    # ax.set_ylabel(r'$f_2$', fontsize=50)
+    ax.set_xlabel(r'$f_1$', fontsize=50)
+    ax.set_ylabel(r'$f_2$', fontsize=50)
     #グラフの範囲指定
     # 範囲（元スケール）
     ax.set_xlim([0, 1 + 0.3]) 
@@ -324,17 +324,17 @@ def plot_2d(prob, m, roi_type, alg, pop_sel, run, PF, Pset, z, n_obj):
     ax.tick_params(axis='both', which='minor', labelsize=45)
     ax.set_aspect('equal', adjustable='box')
     # 目盛り表示
-    # ax.set_xticks([0, 1])
-    # ax.set_yticks([0, 1])
-    ax.set_xticks([])
-    ax.set_yticks([])
+    ax.set_xticks([0, 1])
+    ax.set_yticks([0, 1])
+    # ax.set_xticks([])
+    # ax.set_yticks([])
     # ラベルは実スケールの ideal / nadir
-    ax.xaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_x, true_nadir_x)))
-    ax.yaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(true_ideal_y, true_nadir_y)))
+    ax.xaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(0, 1)))
+    ax.yaxis.set_major_formatter(FuncFormatter(make_endpoints_formatter(0, 1)))
     ax.set_aspect('equal', adjustable='box')
 
-    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
-
+    # plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
+    plt.subplots_adjust(left=0.23, right=0.99, top=0.99, bottom=0.23)
     output_dir = f'../output/2d_image_median_{mult_ref}/{roi_type}/{alg}/{prob}/m{m}/'
     os.makedirs(output_dir, exist_ok=True)
     #画像ファイル名指定

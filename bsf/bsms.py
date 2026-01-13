@@ -156,7 +156,8 @@ class FitnessAssignment(Survival):
             
             data = []
             for i in range(n_obj):
-                data.append(true_nadir[i] * roi_radius)
+                data.append(roi_radius)
+                # data.append(true_nadir[i] * roi_radius)
             r_radius_elipse = np.array(data)
             diff = F - pivot_point
             val = np.sum((diff/r_radius_elipse)**2, axis = 1)
